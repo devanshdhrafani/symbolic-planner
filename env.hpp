@@ -48,6 +48,12 @@ public:
         }
         throw runtime_error("Action " + name + " not found!");
     }
+
+    unordered_set<Action, ActionHasher, ActionComparator> get_actions()
+    {
+        return this->actions;
+    }
+
     unordered_set<string> get_symbols() const
     {
         return this->symbols;
