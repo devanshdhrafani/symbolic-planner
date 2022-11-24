@@ -110,6 +110,8 @@ class GroundedAction
 private:
     string name;
     list<string> arg_values;
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> grounded_preconditions;
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> grounded_effects;
 
 public:
     GroundedAction(string name, list<string> arg_values)
@@ -121,6 +123,19 @@ public:
         }
     }
 
+    GroundedAction(string name, list<string> arg_values,
+                   unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> precon,
+                   unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> effect)
+    {
+        this->name = name;
+        for (string ar : arg_values)
+            this->arg_values.push_back(ar);
+        for (GroundedCondition gc : precon)
+            this->grounded_preconditions.insert(gc);
+        for (GroundedCondition gc : effect)
+            this->grounded_effects.insert(gc);
+    }
+
     string get_name() const
     {
         return this->name;
@@ -129,6 +144,16 @@ public:
     list<string> get_arg_values() const
     {
         return this->arg_values;
+    }
+
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_preconditions()
+    {
+        return this->grounded_preconditions;
+    }
+
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_effects()
+    {
+        return this->grounded_effects;
     }
 
     bool operator==(const GroundedAction& rhs) const
