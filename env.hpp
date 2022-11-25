@@ -9,6 +9,14 @@ private:
     unordered_set<string> symbols;
 
 public:
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_initial_conditions()
+    {
+        return this->initial_conditions;
+    }
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_goal_conditions()
+    {
+        return this->goal_conditions;
+    }
     void remove_initial_condition(GroundedCondition gc)
     {
         this->initial_conditions.erase(gc);

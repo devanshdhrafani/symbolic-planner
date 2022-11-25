@@ -5,6 +5,7 @@
 #include <set>
 #include <algorithm>
 #include <stdexcept>
+#include <queue>
 #include "env.hpp"
 
 #define SYMBOLS 0
@@ -79,6 +80,18 @@ void permute(vector<string> a, vector<vector<string>> &all_permutations, int l, 
 	}
 }
 
+string condition_to_string(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator>& stateset)
+{
+    set<string> state;
+    string string_return = "";
+
+    for(GroundedCondition gc : stateset)
+        state.insert(gc.toString());
+    for (auto it = state.begin(); it != state.end(); it++) 
+        string_return += *it; 
+    return string_return;
+}
+
 class SymbolicPlanner
 {
     private:
@@ -90,6 +103,23 @@ class SymbolicPlanner
         {
             this->env = env;
         }
+        struct node
+        {
+            unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state;
+            double g = std::numeric_limits<int>::max();
+            double h = std::numeric_limits<int>::max();
+        
+            int parent = -1; // idx of previous(parent) node
+
+            // string parentNodeState = "";
+        };
+
+        unordered_set<int> closed_list; // idx of expanded nodes
+        unordered_map<int, node> node_info; // idx, node
+        unordered_map<string, int> state_map; // string_state, idx
+
+        // f value, idx: sorted according to f value
+        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> open_list;
 
         vector<GroundedAction> get_grounded_actions() const
         {
@@ -97,7 +127,14 @@ class SymbolicPlanner
         }
 
         void compute_all_grounded_actions();
-        // void a_star_search();
+        int heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
+        void init_start_node();
+        bool in_closed_list(int idx);
+        bool is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state, GroundedAction action);
+        node take_action(node n, GroundedAction a);
+        bool goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
+        void a_star_search();
+
         // list<GroundedAction> backtrack();
 };
 

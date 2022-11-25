@@ -45,6 +45,11 @@ public:
         return this->truth;
     }
 
+    void flip_truth()
+    {
+        this->truth = !this->truth;
+    }
+
     friend ostream& operator<<(ostream& os, const GroundedCondition& pred)
     {
         os << pred.toString() << " ";

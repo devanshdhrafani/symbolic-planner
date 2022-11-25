@@ -3,11 +3,8 @@
 using namespace std;
 
 bool print_status = true;
-bool debug = true;
+bool debug = false;
 
-// Check if given grounded action can be taken in given state
-
-// Get successors of a state (list of grounded actions)
 
 
 // Compute all possible grounded actions from a state
@@ -105,7 +102,137 @@ void SymbolicPlanner::compute_all_grounded_actions()
     }
 }
 
+// Calculate heuristic value for a given node
+int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state)
+{
+    // return 0 for now
+    return 0;
+}
+
+
+// Initialize start node for A* search
+void SymbolicPlanner::init_start_node()
+{
+    int start_idx = 0;
+    node_info[start_idx].state = this->env->get_initial_conditions();
+    string start_state_ = condition_to_string(node_info[start_idx].state);
+    state_map[start_state_] = start_idx;
+    node_info[start_idx].g = 0;
+    node_info[start_idx].h = heuristic(node_info[start_idx].state);
+    int f = node_info[start_idx].g + node_info[start_idx].h;
+    open_list.push(make_pair(f, start_idx));
+}
+
+bool SymbolicPlanner::in_closed_list(int idx)
+{
+    if (closed_list.find(idx) == closed_list.end())
+        return false;
+    else
+        return true;
+}
+
+// Check if action can be taken in given state
+bool SymbolicPlanner::is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state, GroundedAction a)
+{
+    // Check if all preconditions are satisfied
+    for (GroundedCondition precon : a.get_preconditions())
+    {
+        if (state.find(precon) == state.end())
+            return false;
+    }
+    return true;
+}
+
+// Take action in given state
+SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
+{
+    node new_node;
+    new_node.state = n.state;
+
+    // Add effects of action to new state
+    for (GroundedCondition effect : a.get_effects())
+    {
+        if(effect.get_truth())
+        {
+            new_node.state.insert(effect);
+        }
+        else
+        {
+            effect.flip_truth();
+            new_node.state.erase(new_node.state.find(effect));
+        }
+    }
+
+    new_node.h = heuristic(new_node.state);
+    new_node.g = n.g + 1;
+
+    return new_node;
+}
+
+// Check if goal reached
+bool SymbolicPlanner::goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state)
+{
+    for (GroundedCondition goal : this->env->get_goal_conditions())
+    {
+        if (state.find(goal) == state.end())
+            return false;
+    }
+    return true;
+}
+
 // A* search
+void SymbolicPlanner::a_star_search()
+{
+    while(!this->open_list.empty())
+    {
+        cout<<"Open list size: "<<open_list.size()<<endl;
+        cout<<"Closed list size: "<<closed_list.size()<<endl;
+        pair<int, int> current_node_idx = this->open_list.top();   //f-value, cell index
+        this->open_list.pop();
+        int current_idx = current_node_idx.second;
+        if (in_closed_list(current_idx))
+            continue;
+        this->closed_list.insert(current_idx);
+
+        node current_node = this->node_info[current_idx];
+
+        if(goal_reached(current_node.state))
+        {
+            cout << "Goal reached!" << endl;
+            cout << "Path cost: " << current_node.g << endl;
+            return;
+        }
+
+        for(GroundedAction ga : this->grounded_actions)
+        {
+            if(this->is_action_valid(current_node.state, ga))
+            {
+                node next_node = this->take_action(current_node, ga);
+                string next_node_str = condition_to_string(next_node.state);
+
+                // check if next node exists in state map
+                // if not, add to state map with new index
+                if(state_map.find(next_node_str) == state_map.end())
+                {
+                    int next_idx = state_map.size();
+                    state_map[next_node_str] = next_idx;
+                }
+
+                // check if new node g-value is greater than current g-value + cost
+                if(node_info[state_map[next_node_str]].g > current_node.g + 1)
+                {
+                    node_info[state_map[next_node_str]].g = current_node.g + 1;
+                    node_info[state_map[next_node_str]].h = next_node.h;
+                    node_info[state_map[next_node_str]].parent = current_idx;
+                    int f = node_info[state_map[next_node_str]].g + node_info[state_map[next_node_str]].h;
+                    open_list.push(make_pair(f, state_map[next_node_str]));
+                }
+
+            }
+        }
+
+    }
+}
 
 list<GroundedAction> planner(Env* env)
 {
@@ -125,8 +252,10 @@ list<GroundedAction> planner(Env* env)
         cout << endl;
     }
 
+    planner.init_start_node();
+
     // Perform A* search
-    // planner.a_star_search();
+    planner.a_star_search();
 
     // Backtrack to get the plan
     // list<GroundedAction> plan = planner.backtrack();
