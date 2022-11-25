@@ -15,6 +15,91 @@
 #define ACTION_PRECONDITION 5
 #define ACTION_EFFECT 6
 
+// For our vector subset, at every step we have A.size()-i-1
+// choices to include. A loop helps us to choose each element
+// and then move to the indices further present in the array.
+// At the end we backtrack to choose a different index.
+void comb_util(vector<string>& A, vector<vector<string> >& res,
+                 vector<string>& subset, int index)
+{
+    res.push_back(subset);
+      // Loop to choose from different elements present
+      // after the current index 'index'
+    for (int i = index; i < A.size(); i++) 
+    {
+        // include the A[i] in subset.
+        subset.push_back(A[i]);
+ 
+        // move onto the next element.
+        comb_util(A, res, subset, i + 1);
+ 
+        // exclude the A[i] from subset and triggers
+        // backtracking.
+        subset.pop_back();
+    }
+    return;
+}
+ 
+// Combination code modified from GeeksforGeeks example
+// Find and return all combinations of symbols that can be picked. 
+vector<vector<string>> combinations(vector<string>& A, int n)
+{
+    vector<string> subset;
+    vector<vector<string> > res;
+ 
+    // keeps track of current element in vector A
+    // and the number of elements present in the array subset
+    int index = 0;
+    comb_util(A, res, subset, index);
+    
+    vector<vector<string>> ret;
+    
+    // Only return combinations whose size is n
+    for(int i=0; i<res.size(); i++)
+    {
+        if(res[i].size()==n)
+        {
+            ret.push_back(res[i]);
+        }
+    }
+    return ret;
+}
+
+// Generates permutations of a string vector using Heap's algorithm
+void permute(vector<string> a, vector<vector<string>> &all_permutations, int l, int r)
+{
+	if (l == r)
+		all_permutations.push_back(a);
+	else {
+		for (int i = l; i <= r; i++) {
+			swap(a[l], a[i]);
+			permute(a, all_permutations, l + 1, r);
+			swap(a[l], a[i]);
+		}
+	}
+}
+
+class SymbolicPlanner
+{
+    private:
+        vector<GroundedAction> grounded_actions;
+        Env* env;
+
+    public:
+        SymbolicPlanner(Env* env)
+        {
+            this->env = env;
+        }
+
+        vector<GroundedAction> get_grounded_actions() const
+        {
+            return this->grounded_actions;
+        }
+
+        void compute_all_grounded_actions();
+        // void a_star_search();
+        // list<GroundedAction> backtrack();
+};
 
 list<string> parse_symbols(string symbols_str)
 {
