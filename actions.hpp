@@ -146,12 +146,12 @@ public:
         return this->arg_values;
     }
 
-    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_preconditions()
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_preconditions() const
     {
         return this->grounded_preconditions;
     }
 
-    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_effects()
+    unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> get_effects() const
     {
         return this->grounded_effects;
     }
@@ -176,7 +176,15 @@ public:
 
     friend ostream& operator<<(ostream& os, const GroundedAction& gac)
     {
-        os << gac.toString() << " ";
+        os << gac.toString() << endl;
+        os << "Grounded precondition: ";
+        for (GroundedCondition precond : gac.get_preconditions())
+            os << precond;
+        os << endl;
+        os << "Grounded effect: ";
+        for (GroundedCondition effect : gac.get_effects())
+            os << effect;
+        os << endl;
         return os;
     }
 
