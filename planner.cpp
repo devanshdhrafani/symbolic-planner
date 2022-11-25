@@ -71,7 +71,10 @@ void SymbolicPlanner::compute_all_grounded_actions()
                 list<string> grounded_precon_args;
                 for (string arg : precon.get_args())
                 {
-                    grounded_precon_args.push_back(arg_map[arg]);
+                    if(arg_map[arg] == "")
+                        grounded_precon_args.push_back(arg);
+                    else
+                        grounded_precon_args.push_back(arg_map[arg]);
                 }
                 GroundedCondition grounded_precon(precon.get_predicate(), grounded_precon_args, precon.get_truth());
                 grounded_precons.insert(grounded_precon);
@@ -83,7 +86,10 @@ void SymbolicPlanner::compute_all_grounded_actions()
                 list<string> grounded_effect_args;
                 for (string arg : effect.get_args())
                 {
-                    grounded_effect_args.push_back(arg_map[arg]);
+                    if(arg_map[arg] == "")
+                        grounded_effect_args.push_back(arg);
+                    else
+                        grounded_effect_args.push_back(arg_map[arg]);
                 }
                 GroundedCondition grounded_effect(effect.get_predicate(), grounded_effect_args, effect.get_truth());
                 grounded_effects.insert(grounded_effect);
