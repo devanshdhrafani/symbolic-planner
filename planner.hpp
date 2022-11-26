@@ -109,18 +109,17 @@ class SymbolicPlanner
             double g = std::numeric_limits<int>::max();
             double h = std::numeric_limits<int>::max();
         
-            int parent = -1; // idx of previous(parent) node
-
+            int parent = -1; // state of previous(parent) node
             // string parentNodeState = "";
         };
 
-        unordered_set<int> closed_list; // idx of expanded nodes
-        unordered_map<int, node> node_info; // idx, node
+        unordered_set<string> closed_list; // idx of expanded nodes
+        unordered_map<string, node> node_info; // idx, node
         unordered_map<string, int> state_map; // string_state, idx
 
-        // f value, idx: sorted according to f value
-        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> open_list;
-
+        // f value, string state: sorted according to f value
+        priority_queue<pair<double, string>, vector<pair<double, string>>, greater<pair<double, string>>> open_list;
+        
         vector<GroundedAction> get_grounded_actions() const
         {
             return this->grounded_actions;
@@ -129,7 +128,7 @@ class SymbolicPlanner
         void compute_all_grounded_actions();
         int heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
         void init_start_node();
-        bool in_closed_list(int idx);
+        bool in_closed_list(string idx);
         bool is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state, GroundedAction action);
         node take_action(node n, GroundedAction a);
         bool goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);

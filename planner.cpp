@@ -113,17 +113,17 @@ int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditio
 // Initialize start node for A* search
 void SymbolicPlanner::init_start_node()
 {
-    int start_idx = 0;
-    node_info[start_idx].state = this->env->get_initial_conditions();
-    string start_state_ = condition_to_string(node_info[start_idx].state);
-    state_map[start_state_] = start_idx;
-    node_info[start_idx].g = 0;
-    node_info[start_idx].h = heuristic(node_info[start_idx].state);
-    int f = node_info[start_idx].g + node_info[start_idx].h;
-    open_list.push(make_pair(f, start_idx));
+    // Get initial state
+    auto init_state = this->env->get_initial_conditions();
+    string initial_state = condition_to_string(init_state);
+    node_info[initial_state].state = init_state;
+    node_info[initial_state].g = 0;
+    node_info[initial_state].h = heuristic(node_info[initial_state].state);
+    int f = node_info[initial_state].g + node_info[initial_state].h;
+    open_list.push(make_pair(f, initial_state));
 }
 
-bool SymbolicPlanner::in_closed_list(int idx)
+bool SymbolicPlanner::in_closed_list(string idx)
 {
     if (closed_list.find(idx) == closed_list.end())
         return false;
@@ -163,6 +163,13 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
         }
     }
 
+    cout<<"New state:"<<endl;
+    for(GroundedCondition c : new_node.state)
+    {
+        cout << c;
+    }
+    cout<<endl;
+
     new_node.h = heuristic(new_node.state);
     new_node.g = n.g + 1;
 
@@ -183,49 +190,39 @@ bool SymbolicPlanner::goal_reached(unordered_set<GroundedCondition, GroundedCond
 // A* search
 void SymbolicPlanner::a_star_search()
 {
-    while(!this->open_list.empty())
+    auto goal_state = this->env->get_goal_conditions();
+    string goal_str = condition_to_string(goal_state);
+    while(!this->open_list.empty() && !in_closed_list(goal_str))
     {
         cout<<"Open list size: "<<open_list.size()<<endl;
         cout<<"Closed list size: "<<closed_list.size()<<endl;
-        pair<int, int> current_node_idx = this->open_list.top();   //f-value, cell index
+        pair<double, string> current_node_idx = this->open_list.top();   //f-value, cell state
         this->open_list.pop();
-        int current_idx = current_node_idx.second;
-        if (in_closed_list(current_idx))
+        string current_node_str = current_node_idx.second;
+        if (in_closed_list(current_node_str))
             continue;
-        this->closed_list.insert(current_idx);
+        this->closed_list.insert(current_node_str);
 
-        node current_node = this->node_info[current_idx];
+        node current_node = this->node_info[current_node_str];
 
-        if(goal_reached(current_node.state))
-        {
-            cout << "Goal reached!" << endl;
-            cout << "Path cost: " << current_node.g << endl;
-            return;
-        }
+        int action_count = -1;
 
         for(GroundedAction ga : this->grounded_actions)
         {
+            ++action_count;
             if(this->is_action_valid(current_node.state, ga))
             {
                 node next_node = this->take_action(current_node, ga);
                 string next_node_str = condition_to_string(next_node.state);
 
-                // check if next node exists in state map
-                // if not, add to state map with new index
-                if(state_map.find(next_node_str) == state_map.end())
-                {
-                    int next_idx = state_map.size();
-                    state_map[next_node_str] = next_idx;
-                }
-
                 // check if new node g-value is greater than current g-value + cost
-                if(node_info[state_map[next_node_str]].g > current_node.g + 1)
+                if(node_info[next_node_str].g > current_node.g + 1)
                 {
-                    node_info[state_map[next_node_str]].g = current_node.g + 1;
-                    node_info[state_map[next_node_str]].h = next_node.h;
-                    node_info[state_map[next_node_str]].parent = current_idx;
-                    int f = node_info[state_map[next_node_str]].g + node_info[state_map[next_node_str]].h;
-                    open_list.push(make_pair(f, state_map[next_node_str]));
+                    node_info[next_node_str].g = current_node.g + 1;
+                    node_info[next_node_str].h = next_node.h;
+                    node_info[next_node_str].parent = action_count;
+                    int f = node_info[next_node_str].g + node_info[next_node_str].h;
+                    open_list.push(make_pair(f, next_node_str));
                 }
 
             }
@@ -252,6 +249,8 @@ list<GroundedAction> planner(Env* env)
         cout << endl;
     }
 
+    cout<<"Grounded actions size: "<<planner.get_grounded_actions().size()<<endl;
+    
     planner.init_start_node();
 
     // Perform A* search
