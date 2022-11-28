@@ -149,6 +149,16 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
     node new_node;
     new_node.state = n.state;
 
+    // cout<<"Current state:"<<endl;
+    // for(GroundedCondition c : new_node.state)
+    // {
+    //     cout << c;
+    // }
+    // cout<<endl;
+
+    // cout<<"Action:"<<endl;
+    // cout<<a;
+
     // Add effects of action to new state
     for (GroundedCondition effect : a.get_effects())
     {
@@ -163,12 +173,12 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
         }
     }
 
-    cout<<"New state:"<<endl;
-    for(GroundedCondition c : new_node.state)
-    {
-        cout << c;
-    }
-    cout<<endl;
+    // cout<<"New state:"<<endl;
+    // for(GroundedCondition c : new_node.state)
+    // {
+    //     cout << c;
+    // }
+    // cout<<endl;
 
     new_node.h = heuristic(new_node.state);
     new_node.g = n.g + 1;
@@ -206,12 +216,21 @@ void SymbolicPlanner::a_star_search()
         node current_node = this->node_info[current_node_str];
 
         int action_count = -1;
+        int valid_action_count = 0;
+
+        // Check if goal reached
+        // if (goal_reached(current_node.state))
+        // {
+        //     cout<<"Goal reached!"<<endl;
+        //     break;
+        // }
 
         for(GroundedAction ga : this->grounded_actions)
         {
             ++action_count;
             if(this->is_action_valid(current_node.state, ga))
             {
+                ++valid_action_count;
                 node next_node = this->take_action(current_node, ga);
                 string next_node_str = condition_to_string(next_node.state);
 
@@ -221,12 +240,13 @@ void SymbolicPlanner::a_star_search()
                     node_info[next_node_str].g = current_node.g + 1;
                     node_info[next_node_str].h = next_node.h;
                     node_info[next_node_str].parent = action_count;
+                    node_info[next_node_str].state = next_node.state;
                     int f = node_info[next_node_str].g + node_info[next_node_str].h;
                     open_list.push(make_pair(f, next_node_str));
                 }
-
             }
         }
+        cout<<"Valid actions: "<<valid_action_count<<endl;
 
     }
 }
