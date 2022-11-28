@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <queue>
+#include <time.h>
 #include "env.hpp"
 
 #define SYMBOLS 0
@@ -110,7 +111,7 @@ class SymbolicPlanner
             double h = std::numeric_limits<int>::max();
         
             int parent = -1; // state of previous(parent) node
-            // string parentNodeState = "";
+            string parent_node_str = "";
         };
 
         unordered_set<string> closed_list; // idx of expanded nodes
@@ -125,6 +126,7 @@ class SymbolicPlanner
             return this->grounded_actions;
         }
 
+        list<GroundedAction> backtrack();
         void compute_all_grounded_actions();
         int heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
         void init_start_node();

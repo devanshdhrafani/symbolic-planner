@@ -5,7 +5,26 @@ using namespace std;
 bool print_status = true;
 bool debug = false;
 
+// backrack from goal to start
+list<GroundedAction> SymbolicPlanner::backtrack()
+{
+    list<GroundedAction> plan;
+    auto goal_state = this->env->get_goal_conditions();
+    string goal_str = condition_to_string(goal_state);
+    auto start_state = this->env->get_initial_conditions();
+    string start_str = condition_to_string(start_state);
 
+    string current_state = goal_str;
+    while (current_state != start_str)
+    {
+        int action_index = node_info[current_state].parent;
+        vector<GroundedAction> all_gacs = this->get_grounded_actions();
+        GroundedAction action = all_gacs.at(action_index);
+        plan.push_front(action);
+        current_state = node_info[current_state].parent_node_str;
+    }
+    return plan;
+}
 
 // Compute all possible grounded actions from a state
 void SymbolicPlanner::compute_all_grounded_actions()
@@ -105,8 +124,15 @@ void SymbolicPlanner::compute_all_grounded_actions()
 // Calculate heuristic value for a given node
 int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state)
 {
-    // return 0 for now
-    return 0;
+    int heauristic_value = 0;
+    // Get goal conditions
+    auto goal = this->env->get_goal_conditions();
+    for(GroundedCondition condition : goal)
+    {
+        if(state.find(condition) != state.end())
+            heauristic_value++;
+    }
+    return heauristic_value;
 }
 
 
@@ -149,16 +175,6 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
     node new_node;
     new_node.state = n.state;
 
-    // cout<<"Current state:"<<endl;
-    // for(GroundedCondition c : new_node.state)
-    // {
-    //     cout << c;
-    // }
-    // cout<<endl;
-
-    // cout<<"Action:"<<endl;
-    // cout<<a;
-
     // Add effects of action to new state
     for (GroundedCondition effect : a.get_effects())
     {
@@ -172,13 +188,6 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
             new_node.state.erase(new_node.state.find(effect));
         }
     }
-
-    // cout<<"New state:"<<endl;
-    // for(GroundedCondition c : new_node.state)
-    // {
-    //     cout << c;
-    // }
-    // cout<<endl;
 
     new_node.h = heuristic(new_node.state);
     new_node.g = n.g + 1;
@@ -202,58 +211,66 @@ void SymbolicPlanner::a_star_search()
 {
     auto goal_state = this->env->get_goal_conditions();
     string goal_str = condition_to_string(goal_state);
-    while(!this->open_list.empty() && !in_closed_list(goal_str))
+    while(!this->open_list.empty())
     {
-        cout<<"Open list size: "<<open_list.size()<<endl;
-        cout<<"Closed list size: "<<closed_list.size()<<endl;
+        // cout<<"Open list size: "<<open_list.size()<<endl;
+        // cout<<"Closed list size: "<<closed_list.size()<<endl;
         pair<double, string> current_node_idx = this->open_list.top();   //f-value, cell state
         this->open_list.pop();
         string current_node_str = current_node_idx.second;
-        if (in_closed_list(current_node_str))
+        if(in_closed_list(current_node_str))
             continue;
         this->closed_list.insert(current_node_str);
 
         node current_node = this->node_info[current_node_str];
 
         int action_count = -1;
-        int valid_action_count = 0;
-
-        // Check if goal reached
-        // if (goal_reached(current_node.state))
-        // {
-        //     cout<<"Goal reached!"<<endl;
-        //     break;
-        // }
 
         for(GroundedAction ga : this->grounded_actions)
         {
             ++action_count;
             if(this->is_action_valid(current_node.state, ga))
             {
-                ++valid_action_count;
                 node next_node = this->take_action(current_node, ga);
                 string next_node_str = condition_to_string(next_node.state);
 
+                if(in_closed_list(next_node_str))
+                    continue;
+
                 // check if new node g-value is greater than current g-value + cost
-                if(node_info[next_node_str].g > current_node.g + 1)
+                if(node_info.find(next_node_str) == node_info.end() || node_info[next_node_str].g > current_node.g + 1)
                 {
+                    // break if goal reached
+                    if(goal_reached(next_node.state))
+                    {
+                        node_info[goal_str].g = current_node.g + 1;
+                        node_info[goal_str].h = next_node.h;
+                        node_info[goal_str].parent = action_count;
+                        node_info[goal_str].state = next_node.state;
+                        node_info[goal_str].parent_node_str = current_node_str;
+                        break;
+                    }
                     node_info[next_node_str].g = current_node.g + 1;
                     node_info[next_node_str].h = next_node.h;
                     node_info[next_node_str].parent = action_count;
                     node_info[next_node_str].state = next_node.state;
+                    node_info[next_node_str].parent_node_str = current_node_str;
+                    cout<<node_info[next_node_str].h<<endl;
                     int f = node_info[next_node_str].g + node_info[next_node_str].h;
                     open_list.push(make_pair(f, next_node_str));
                 }
             }
         }
-        cout<<"Valid actions: "<<valid_action_count<<endl;
-
     }
 }
 
 list<GroundedAction> planner(Env* env)
 {
     SymbolicPlanner planner = SymbolicPlanner(env);
+    cout << endl;
+
+    clock_t t;
+    t = clock();
 
     // Compute all possible grounded actions
     planner.compute_all_grounded_actions();
@@ -269,21 +286,26 @@ list<GroundedAction> planner(Env* env)
         cout << endl;
     }
 
-    cout<<"Grounded actions size: "<<planner.get_grounded_actions().size()<<endl;
+    cout<<"Number of possible actions: "<<planner.get_grounded_actions().size()<<endl;
     
     planner.init_start_node();
 
     // Perform A* search
     planner.a_star_search();
+    cout<<"Number of states expanded: "<<planner.closed_list.size()<<endl;
 
+    list<GroundedAction> actions;
     // Backtrack to get the plan
-    // list<GroundedAction> plan = planner.backtrack();
+    actions = planner.backtrack();
+
+    t = clock() - t;
+    cout<<"Time Taken: "<<((float)t)/CLOCKS_PER_SEC<<" seconds\n";
 
     // blocks world example
-    list<GroundedAction> actions;
-    actions.push_back(GroundedAction("MoveToTable", { "A", "B" }));
-    actions.push_back(GroundedAction("Move", { "C", "Table", "A" }));
-    actions.push_back(GroundedAction("Move", { "B", "Table", "C" }));
+    // list<GroundedAction> actions;
+    // actions.push_back(GroundedAction("MoveToTable", { "A", "B" }));
+    // actions.push_back(GroundedAction("Move", { "C", "Table", "A" }));
+    // actions.push_back(GroundedAction("Move", { "B", "Table", "C" }));
 
     return actions;
 }
