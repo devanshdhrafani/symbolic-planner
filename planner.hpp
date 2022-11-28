@@ -107,8 +107,8 @@ class SymbolicPlanner
         struct node
         {
             unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state;
-            double g = std::numeric_limits<int>::max();
-            double h = std::numeric_limits<int>::max();
+            int g = std::numeric_limits<int>::max();
+            int h = 0;
         
             int parent = -1; // state of previous(parent) node
             string parent_node_str = "";
@@ -119,8 +119,7 @@ class SymbolicPlanner
         unordered_map<string, int> state_map; // string_state, idx
 
         // f value, string state: sorted according to f value
-        priority_queue<pair<double, string>, vector<pair<double, string>>, greater<pair<double, string>>> open_list;
-        
+        priority_queue<pair<int, string>, vector<pair<int, string>>, greater<pair<int, string>>> open_list;
         vector<GroundedAction> get_grounded_actions() const
         {
             return this->grounded_actions;
