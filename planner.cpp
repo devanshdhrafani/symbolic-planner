@@ -4,6 +4,7 @@ using namespace std;
 
 bool print_status = true;
 bool debug = false;
+int which_heuristic = 1;
 
 // backrack from goal to start
 list<GroundedAction> SymbolicPlanner::backtrack()
@@ -122,10 +123,35 @@ void SymbolicPlanner::compute_all_grounded_actions()
 }
 
 // Calculate heuristic value for a given node
-int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state)
+int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state)
 {
     int heauristic_value = 0;
-    // Get goal conditions
+    auto goal = this->env->get_goal_conditions();
+    switch (which_heuristic)
+    {
+        // h(s) = 0
+        case 0:
+            heauristic_value = 0;
+            break;
+
+        // h(s) = No of unsatisfied literals
+        case 1:
+            heauristic_value = simple_heur(state);
+            break;
+
+        // h(s) = empty-delete-list
+        case 2:
+            heauristic_value = empty_delete_list_heur(state);
+            break;
+    }
+    
+    return heauristic_value;
+}
+
+// h(s) = No of unsatisfied literals
+int SymbolicPlanner::simple_heur(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state)
+{
+    int heauristic_value = 0;
     auto goal = this->env->get_goal_conditions();
     for(GroundedCondition condition : goal)
     {
@@ -133,6 +159,87 @@ int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditio
             heauristic_value++;
     }
     return heauristic_value;
+}
+
+// Compute empty-delete-list heuristic
+int SymbolicPlanner::empty_delete_list_heur(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state)
+{
+    unordered_set<string> closed_list_; // idx of expanded nodes
+    unordered_map<string, node> node_info_; // idx, node
+    unordered_map<string, int> state_map_; // string_state, idx
+    // f value, string state: sorted according to f value
+    priority_queue<pair<int, string>, vector<pair<int, string>>, greater<pair<int, string>>> open_list_;
+
+    int num_actions = 0;
+
+    // Add start state to open list
+    string start_state_str = condition_to_string(state);
+    node_info_[start_state_str].state = state;
+    node_info_[start_state_str].g = 0;
+    node_info_[start_state_str].h = simple_heur(state);
+    int f = 0 + node_info_[start_state_str].h;
+    open_list_.push(make_pair(f, start_state_str));
+
+    auto goal_state = this->env->get_goal_conditions();
+    string goal_str = condition_to_string(goal_state);
+    while(!open_list_.empty())
+    {
+        // cout<<"Open list size: "<<open_list_.size()<<endl;
+        // cout<<"Closed list size: "<<closed_list_.size()<<endl;
+        pair<int, string> current_node_idx = open_list_.top();   //f-value, cell state
+        open_list_.pop();
+        string current_node_str = current_node_idx.second;
+        if(in_closed_list(closed_list_, current_node_str))
+            continue;
+        closed_list_.insert(current_node_str);
+
+        node current_node = node_info_[current_node_str];
+
+        int action_count = -1;
+
+        for(GroundedAction ga : this->grounded_actions)
+        {
+            ++action_count;
+            if(this->is_action_valid(current_node.state, ga))
+            {
+                node next_node = this->take_action_relaxed(current_node, ga);
+                string next_node_str = condition_to_string(next_node.state);
+
+                if(in_closed_list(closed_list_, next_node_str))
+                    continue;
+
+                // check if new node g-value is greater than current g-value + cost
+                if(node_info_[next_node_str].g > current_node.g + 1)
+                {
+                    // break if goal reached
+                    if(goal_reached(next_node.state))
+                    {
+                        node_info_[goal_str].g = current_node.g + 1;
+                        node_info_[goal_str].parent = action_count;
+                        node_info_[goal_str].state = next_node.state;
+                        node_info_[goal_str].parent_node_str = current_node_str;
+
+                        string ittr = goal_str;
+                        while(ittr != start_state_str)
+                        {
+                            num_actions++;
+                            ittr = node_info_[ittr].parent_node_str;
+                        }
+                        return num_actions;
+                    }
+                    node_info_[next_node_str].g = current_node.g + 1;
+                    node_info_[next_node_str].h = simple_heur(next_node.state);
+                    node_info_[next_node_str].parent = action_count;
+                    node_info_[next_node_str].state = next_node.state;
+                    node_info_[next_node_str].parent_node_str = current_node_str;
+                    // cout<<node_info_[next_node_str].h<<endl;
+                    int f = node_info_[next_node_str].g + node_info_[next_node_str].h;
+                    open_list_.push(make_pair(f, next_node_str));
+                }
+            }
+        }
+    }
+    return num_actions;
 }
 
 
@@ -149,7 +256,7 @@ void SymbolicPlanner::init_start_node()
     open_list.push(make_pair(f, initial_state));
 }
 
-bool SymbolicPlanner::in_closed_list(string idx)
+bool SymbolicPlanner::in_closed_list(unordered_set<string> &closed_list, string &idx)
 {
     if (closed_list.find(idx) == closed_list.end())
         return false;
@@ -158,7 +265,7 @@ bool SymbolicPlanner::in_closed_list(string idx)
 }
 
 // Check if action can be taken in given state
-bool SymbolicPlanner::is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state, GroundedAction a)
+bool SymbolicPlanner::is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state, GroundedAction &a)
 {
     // Check if all preconditions are satisfied
     for (GroundedCondition precon : a.get_preconditions())
@@ -170,7 +277,7 @@ bool SymbolicPlanner::is_action_valid(unordered_set<GroundedCondition, GroundedC
 }
 
 // Take action in given state
-SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
+SymbolicPlanner::node SymbolicPlanner::take_action(node &n, GroundedAction &a)
 {
     node new_node;
     new_node.state = n.state;
@@ -192,8 +299,26 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
     return new_node;
 }
 
+// Take relaxed action in given state
+SymbolicPlanner::node SymbolicPlanner::take_action_relaxed(node &n, GroundedAction &a)
+{
+    node new_node;
+    new_node.state = n.state;
+
+    // Add effects of action to new state
+    for (GroundedCondition effect : a.get_effects())
+    {
+        if(effect.get_truth())
+        {
+            new_node.state.insert(effect);
+        }
+    }
+
+    return new_node;
+}
+
 // Check if goal reached
-bool SymbolicPlanner::goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state)
+bool SymbolicPlanner::goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state)
 {
     for (GroundedCondition goal : this->env->get_goal_conditions())
     {
@@ -208,16 +333,16 @@ void SymbolicPlanner::a_star_search()
 {
     auto goal_state = this->env->get_goal_conditions();
     string goal_str = condition_to_string(goal_state);
-    while(!this->open_list.empty())
+    while(!open_list.empty())
     {
         // cout<<"Open list size: "<<open_list.size()<<endl;
         // cout<<"Closed list size: "<<closed_list.size()<<endl;
-        pair<int, string> current_node_idx = this->open_list.top();   //f-value, cell state
-        this->open_list.pop();
+        pair<int, string> current_node_idx = open_list.top();   //f-value, cell state
+        open_list.pop();
         string current_node_str = current_node_idx.second;
-        if(in_closed_list(current_node_str))
+        if(in_closed_list(closed_list, current_node_str))
             continue;
-        this->closed_list.insert(current_node_str);
+        closed_list.insert(current_node_str);
 
         node current_node = this->node_info[current_node_str];
 
@@ -231,11 +356,11 @@ void SymbolicPlanner::a_star_search()
                 node next_node = this->take_action(current_node, ga);
                 string next_node_str = condition_to_string(next_node.state);
 
-                if(in_closed_list(next_node_str))
+                if(in_closed_list(closed_list, next_node_str))
                     continue;
 
                 // check if new node g-value is greater than current g-value + cost
-                if(node_info.find(next_node_str) == node_info.end() || node_info[next_node_str].g > current_node.g + 1)
+                if(node_info[next_node_str].g > current_node.g + 1)
                 {
                     // break if goal reached
                     if(goal_reached(next_node.state))
@@ -252,9 +377,7 @@ void SymbolicPlanner::a_star_search()
                     node_info[next_node_str].parent = action_count;
                     node_info[next_node_str].state = next_node.state;
                     node_info[next_node_str].parent_node_str = current_node_str;
-                    // cout<<node_info[next_node_str].h<<endl;
                     int f = node_info[next_node_str].g + node_info[next_node_str].h;
-                    cout<<f<<endl;
                     open_list.push(make_pair(f, next_node_str));
                 }
             }

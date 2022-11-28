@@ -127,13 +127,16 @@ class SymbolicPlanner
 
         list<GroundedAction> backtrack();
         void compute_all_grounded_actions();
-        int heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
+        int heuristic(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state);
+        int simple_heur(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state);
+        int empty_delete_list_heur(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state);
         void init_start_node();
-        bool in_closed_list(string idx);
-        bool is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state, GroundedAction action);
-        node take_action(node n, GroundedAction a);
-        bool goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> state);
+        bool in_closed_list(unordered_set<string> &closed_list, string &idx);
+        bool is_action_valid(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state, GroundedAction &action);
+        node take_action(node &n, GroundedAction &a);
+        bool goal_reached(unordered_set<GroundedCondition, GroundedConditionHasher, GroundedConditionComparator> &state);
         void a_star_search();
+        node take_action_relaxed(node &n, GroundedAction &a);
 
         // list<GroundedAction> backtrack();
 };
