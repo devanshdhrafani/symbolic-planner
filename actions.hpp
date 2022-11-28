@@ -176,15 +176,15 @@ public:
 
     friend ostream& operator<<(ostream& os, const GroundedAction& gac)
     {
-        os << gac.toString() << endl;
-        os << "Grounded precondition: ";
-        for (GroundedCondition precond : gac.get_preconditions())
-            os << precond;
-        os << endl;
-        os << "Grounded effect: ";
-        for (GroundedCondition effect : gac.get_effects())
-            os << effect;
-        os << endl;
+        os << gac.toString();
+        // os << "Grounded precondition: ";
+        // for (GroundedCondition precond : gac.get_preconditions())
+        //     os << precond;
+        // os << endl;
+        // os << "Grounded effect: ";
+        // for (GroundedCondition effect : gac.get_effects())
+        //     os << effect;
+        // os << endl;
         return os;
     }
 
