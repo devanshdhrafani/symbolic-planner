@@ -189,9 +189,6 @@ SymbolicPlanner::node SymbolicPlanner::take_action(node n, GroundedAction a)
         }
     }
 
-    new_node.h = heuristic(new_node.state);
-    new_node.g = n.g + 1;
-
     return new_node;
 }
 
@@ -215,7 +212,7 @@ void SymbolicPlanner::a_star_search()
     {
         // cout<<"Open list size: "<<open_list.size()<<endl;
         // cout<<"Closed list size: "<<closed_list.size()<<endl;
-        pair<double, string> current_node_idx = this->open_list.top();   //f-value, cell state
+        pair<int, string> current_node_idx = this->open_list.top();   //f-value, cell state
         this->open_list.pop();
         string current_node_str = current_node_idx.second;
         if(in_closed_list(current_node_str))
@@ -244,19 +241,20 @@ void SymbolicPlanner::a_star_search()
                     if(goal_reached(next_node.state))
                     {
                         node_info[goal_str].g = current_node.g + 1;
-                        node_info[goal_str].h = next_node.h;
+                        node_info[goal_str].h = heuristic(next_node.state);
                         node_info[goal_str].parent = action_count;
                         node_info[goal_str].state = next_node.state;
                         node_info[goal_str].parent_node_str = current_node_str;
                         break;
                     }
                     node_info[next_node_str].g = current_node.g + 1;
-                    node_info[next_node_str].h = next_node.h;
+                    node_info[next_node_str].h = heuristic(next_node.state);
                     node_info[next_node_str].parent = action_count;
                     node_info[next_node_str].state = next_node.state;
                     node_info[next_node_str].parent_node_str = current_node_str;
-                    cout<<node_info[next_node_str].h<<endl;
+                    // cout<<node_info[next_node_str].h<<endl;
                     int f = node_info[next_node_str].g + node_info[next_node_str].h;
+                    cout<<f<<endl;
                     open_list.push(make_pair(f, next_node_str));
                 }
             }
