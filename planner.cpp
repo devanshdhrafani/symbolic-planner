@@ -129,7 +129,7 @@ int SymbolicPlanner::heuristic(unordered_set<GroundedCondition, GroundedConditio
     auto goal = this->env->get_goal_conditions();
     for(GroundedCondition condition : goal)
     {
-        if(state.find(condition) != state.end())
+        if(state.find(condition) == state.end())
             heauristic_value++;
     }
     return heauristic_value;
